@@ -1,0 +1,111 @@
+import pandas as pd
+import nltk
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import re
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# ----------------------------------------------------
+# 1. SIMULANDO A CARGA DE DADOS (AJUSTADO PARA O VADER)
+# ----------------------------------------------------
+
+# AJUSTE CHAVE: Palavras em inglês foram adicionadas para garantir que o VADER
+# (que só entende inglês) classifique corretamente os sentimentos.
+data = {
+    'Texto': [
+        "Amei o novo filme! A direção e a atuação foram incríveis. WONDERFUL! #FilmeTop", # POSITIVO FORTE
+        "Que decepção! O pior serviço que já usei, nunca mais volto. TERRIBLE.", # NEGATIVO FORTE
+        "Acho que o produto é ok, mas o preço é muito alto. HIGH PRICE.", # NEUTRO/NEGATIVO FRACO
+        "Não tenho uma opinião formada sobre esse assunto. É NEUTRAL para mim.", # NEUTRO
+        "O jogo de futebol foi emocionante e a vitória foi merecida! GREAT WIN! Parabéns!" # POSITIVO FORTE
+    ]
+}
+
+df = pd.DataFrame(data)
+
+# Visualizando os dados iniciais
+print("--- Dados Iniciais ---")
+print(df)
+
+# ----------------------------------------------------
+# 2. LIMPEZA E PRÉ-PROCESSAMENTO
+# ----------------------------------------------------
+
+def limpar_texto(texto):
+    # O código de limpeza remove a pontuação e os caracteres que o VADER não usa
+    texto = re.sub(r'http\S+|www\S+|https\S+', '', texto, flags=re.MULTILINE)
+    texto = re.sub(r'@\w+|#\w+', '', texto)
+    texto = re.sub(r'[^\w\s]', '', texto)
+    return texto.lower().strip()
+
+df['Texto_Limpo'] = df['Texto'].apply(limpar_texto)
+
+print("\n--- Dados Após Limpeza ---")
+print(df[['Texto', 'Texto_Limpo']])
+
+# ----------------------------------------------------
+# 4. ANÁLISE DE SENTIMENTOS (VADER NATIVO)
+# ----------------------------------------------------
+# Esta seção usa o seu código original, que agora deve classificar corretamente
+# devido às palavras-chave em inglês adicionadas na Seção 1.
+
+# Se for a primeira vez que está usando o VADER, descomente a linha abaixo:
+# nltk.download('vader_lexicon')
+
+analisador = SentimentIntensityAnalyzer()
+
+def classificar_sentimento(texto):
+    vs = analisador.polarity_scores(texto)
+    
+    # Classificação baseada no 'compound score' do VADER
+    if vs['compound'] >= 0.05:
+        return 'Positivo'
+    elif vs['compound'] <= -0.05:
+        return 'Negativo'
+    else:
+        return 'Neutro'
+
+df['Sentimento'] = df['Texto_Limpo'].apply(classificar_sentimento)
+
+print("\n--- Análise de Sentimentos Completa ---")
+print(df[['Texto_Limpo', 'Sentimento']])
+
+# ----------------------------------------------------
+# 5. AGREGAÇÃO E VISUALIZAÇÃO
+# ----------------------------------------------------
+
+# 5.1. Agregação (Contar o Volume de cada Sentimento)
+contagem_sentimentos = df['Sentimento'].value_counts()
+
+print("\n--- Contagem Final dos Sentimentos ---")
+print(contagem_sentimentos)
+
+# 5.2. Visualização
+
+# Definindo as cores para cada categoria
+cores = {'Positivo': 'g', 'Neutro': 'y', 'Negativo': 'r'}
+cores_aplicadas = [cores[s] for s in contagem_sentimentos.index]
+
+plt.figure(figsize=(8, 8))
+plt.pie(
+    contagem_sentimentos.values, 
+    labels=contagem_sentimentos.index, 
+    autopct='%1.1f%%', 
+    startangle=90, 
+    colors=cores_aplicadas,
+    wedgeprops={'edgecolor': 'black'}
+)
+plt.title('Distribuição de Sentimentos (Big Data Sample)', fontsize=16)
+plt.show()
+
+# Gráfico de barras
+plt.figure(figsize=(10, 6))
+sns.barplot(
+    x=contagem_sentimentos.index, 
+    y=contagem_sentimentos.values, 
+    palette=cores_aplicadas
+)
+plt.title('Análise de Sentimento Agregada', fontsize=16)
+plt.xlabel('Sentimento')
+plt.ylabel('Volume de Posts')
+plt.show()
